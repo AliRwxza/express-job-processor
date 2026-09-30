@@ -7,6 +7,7 @@ var logger = require('morgan');
 require("dotenv").config();
 
 var indexRouter = require('./routes/index');
+var jobRouter = require('./routes/job');
 
 var app = express();
 
@@ -21,6 +22,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
+app.use('/api/jobs', jobRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

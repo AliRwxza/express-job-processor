@@ -15,6 +15,8 @@ const sequelize = new Sequelize(
 async function initDB() {
   await sequelize.authenticate();
 
+  require("../models");
+
   console.log("connected to database");
 }
 

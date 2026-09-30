@@ -1,7 +1,5 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database");
-const Job = require("./job");
-const { canTreatArrayAsAnd } = require("sequelize/lib/utils");
 
 const JobLog = sequelize.define(
   "JobLog",

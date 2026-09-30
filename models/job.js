@@ -9,10 +9,6 @@ const Job = sequelize.define(
       autoIncrement: true,
       primaryKey: true
     },
-    name: {
-      type: DataTypes.STRING(),
-      allowNull: false
-    },
     payload: {
       type: DataTypes.JSON,
       allowNull: true
@@ -42,7 +38,11 @@ const Job = sequelize.define(
       type: DataTypes.SMALLINT.UNSIGNED,
       allowNull: false,
       defaultValue: 60
-    }
+    },
+    result: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
   },
   {
     constraints: [

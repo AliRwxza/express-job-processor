@@ -1,13 +1,13 @@
-const { Job } = require("./job");
-const { JobLog } = require("./JobLog");
+const Job = require("./job");
+const JobLog = require("./jobLog");
 
-Job.hasMany(JobLog,{
-  foreignKey: "jobId"
-});
+Job.hasMany(JobLog,
+  { foreignKey: "jobId" }
+);
 
-JobLog.belongsTo(Job, {
-  foreignKey: "jobId"
-});
+JobLog.belongsTo(Job, 
+  { foreignKey: "jobId" }
+);
 
 module.exports = {
   Job,

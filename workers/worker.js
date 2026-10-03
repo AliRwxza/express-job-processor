@@ -2,20 +2,14 @@ require("dotenv").config();
 
 const { sequelize } = require("../config/database");
 const { Job } = require("../models");
-
-
-async function sleep (ms) {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
-}
+const { setTimeout } = require("node:timers/promises");
 
 async function executeJob(job) {
   const jobModule= require(job.payload.file);
 
   const method = jobModule[job.payload.method];
 
-  const result = await method(...job.payload.args);
+  const result = await method(job.payload);
 
   await job.update({
     status: "completed",
@@ -29,35 +23,67 @@ async function worker(workerId) {
   console.log("Starting worker " + workerId);
   
   while (true) {
+    const transaction = await sequelize.transaction();
     const job = await Job.findOne({
       where: {status: "queued"},
       order: [
         ["createdAt", "ASC"]
-      ]
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true
     });
-  
+
     if (!job) {
       console.log("No jobs available");
 
-      await sleep(5000);
+      transaction.rollback();
+
+      await setTimeout(5000);
 
       continue;
     }
 
-    if (job.attempts >= job.maxRetries) {
-      console.log("Number of retries exceeded.");
+    console.log(`Job ${job.id} locked`);
 
-      await sleep(5000);
+    try {
+      if (job.attempts >= job.maxRetries) {
+        console.log("Number of retries exceeded.");
 
-      continue;
+        throw Error("MAX_RET");
+      }
+
+      await job.update({
+        status: "processing",
+        attempts: job.attempts + 1
+      }, {
+        transaction
+      });
+
+      await transaction.commit();
+
+      console.log(`Job ${job.id} status updated to processing`);
+
+      await executeJob(job);
+
+    } catch (err) {
+      // console.log(err);
+      if (job.attempts < job.maxRetries) {
+        await job.update({
+          status: "queued",
+        });
+
+      } else {
+        await job.update({
+          status: "failed",
+          result: "Error: maximum number of retries exceeded"
+        }, {
+          transaction
+        });
+        
+        transaction.commit();
+      }
     }
-
-    await job.update({
-      status: "processing",
-      attempts: job.attempts + 1
-    });
-
-    await executeJob(job);
   }
 }
 

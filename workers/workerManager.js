@@ -21,40 +21,42 @@ async function startWorkers(workerCount) {
     workers.push(workerReference);
 
     worker.on("message", async (message) => {
-      if (message.type === "ready") {
-        console.log(`[WORKER ${workerReference.id}]: state set to idle`)
+      const { type, result, jobId, attempts, maxRetries } = message;
+      if (type === "ready") {
+        console.log(`[WORKER ${workerReference.id} READY]: state set to idle`);
+
         workerReference.idle = true;
         
         await Job.update({
           status: "completed",
-          result: message.result
+          result: result
         }, {
-          where: {id: message.jobId}
+          where: {id: jobId}
         });
 
-      } else if (message.type === "failed") {
+      } else if (type === "failed") {
+        console.log(`[WORKER ${workerReference.id} FAILED]: state set to idle`);
+
         workerReference.idle = true;
         
-        const job = await Job.findByPk(message.jobId);
-        await job.update({
-          status: (job.attempts < job.maxRetries) ? "queued" : "failed",
-          attempts: (job.attempts < job.maxRetries) ? job.attempts + 1 : job.attempts,
-          result: message.result
+        await Job.update({
+          status: (attempts < maxRetries) ? "queued" : "failed",
+          attempts: (attempts < maxRetries) ? attempts + 1 : attempts,
+          result: result
+        }, {
+          where: {id: jobId}
         });
       }
     });
   }
 
   while (true) {
-    console.log("number of workers:", workers.length);
     jobs = await Job.findAll({
       where: {status: "queued"},
       order: [
         ["createdAt", "ASC"]
       ]
     });
-
-    console.log("Number of jobs:", jobs.length);
     
     if (jobs.length === 0) {
       console.log("No jobs available");
@@ -63,31 +65,24 @@ async function startWorkers(workerCount) {
       continue;
     }
       
-    var idleWorker;
+    const idleWorker = workers.find(
+      w => w.idle === true
+    );
 
-    while (true) {
-      idleWorker = workers.find(
-        w => w.idle === true
-      );
-
-      if (idleWorker){
-        break;
-      }
-
-      console.log("No workers are available");
-
-      await setTimeout(5000);
+    if (!idleWorker) {
+      console.log("No workers available");
+      await setTimeout(1000);
       continue;
     }
 
     idleWorker.idle = false;
 
-    idleWorker.process.send({
-      job: jobs[0]
-    });
-
     await jobs[0].update({
       status: "processing"
+    });
+
+    idleWorker.process.send({
+      job: jobs[0]
     });
   }
 }

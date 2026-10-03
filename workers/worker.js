@@ -1,5 +1,5 @@
 async function executeJob(job) {
-  const jobModule= require(job.payload.file);
+  const jobModule = require(job.payload.file);
 
   const method = jobModule[job.payload.method];
 
@@ -13,7 +13,6 @@ async function executeJob(job) {
 process.on("message", async (message) => {
   try {
     const res = await executeJob(message.job);
-    // console.log(11111111, res)
 
     process.send({
       type: "ready",
@@ -23,10 +22,13 @@ process.on("message", async (message) => {
 
   } catch(err) {
     console.log("ERROR in worker:", err);
+    
     process.send({
       type: "failed",
+      attempts: message.job.attempts,
+      maxRetries: message.job.maxRetries,
       jobId: message.job.id,
-      result: err.message
+      result: "ERROR" + err.message
     });
   }
 });

@@ -29,7 +29,7 @@ const Job = sequelize.define(
       allowNull: false,
       defaultValue: 0
     },
-    max_retries: {
+    maxRetries: {
       type: DataTypes.SMALLINT.UNSIGNED,
       allowNull: false,
       defaultValue: 3

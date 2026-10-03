@@ -3,15 +3,19 @@ require("dotenv").config();
 const { sequelize } = require("../config/database");
 const { Job } = require("../models");
 
+
+async function sleep (ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function executeJob(job) {
   const jobModule= require(job.payload.file);
 
   const method = jobModule[job.payload.method];
 
   const result = await method(...job.payload.args);
-
-  console.log("method result:", result);
-  console.log("stringified result:", JSON.stringify(result));
 
   await job.update({
     status: "completed",
@@ -21,58 +25,40 @@ async function executeJob(job) {
   console.log(`job ${job.id} completed successfully`);
 }
 
-async function processJob() {
-  const job = await Job.findOne({
-    where: {status: "queued"},
-    order: [
-      ["createdAt", "ASC"]
-    ]
-  });
+async function worker(workerId) {
+  console.log("Starting worker " + workerId);
   
-  if (!job) {
-    console.log("No jobs available");
-    return;
-  }
+  while (true) {
+    const job = await Job.findOne({
+      where: {status: "queued"},
+      order: [
+        ["createdAt", "ASC"]
+      ]
+    });
+  
+    if (!job) {
+      console.log("No jobs available");
 
-  try {
+      await sleep(5000);
+
+      continue;
+    }
+
+    if (job.attempts >= job.maxRetries) {
+      console.log("Number of retries exceeded.");
+
+      await sleep(5000);
+
+      continue;
+    }
+
     await job.update({
-      status: "processing"
+      status: "processing",
+      attempts: job.attempts + 1
     });
 
     await executeJob(job);
-
-  } catch (err) {
-    console.log(err);
-
-    if (job.attempts < job.max_retries) {
-      await job.update({
-        status: "queued",
-        attempts: job.attempts + 1
-      });
-
-    } else {
-      await job.update({
-        status: "failed",
-        result: "ERROR: Maximum number of attempts reached"
-      });
-    }
   }
 }
 
-async function startWorker() {
-
-    await sequelize.authenticate();
-
-    console.log(
-        "Worker connected to database"
-    );
-
-
-    setInterval(
-        processJob,
-        5000
-    );
-}
-
-
-startWorker();
+module.exports = worker;

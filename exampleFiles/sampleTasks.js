@@ -7,7 +7,7 @@
 // 1. DEFAULT EXPORT: Heavy CPU Computation (~15-20 seconds)
 //    Calculates prime numbers up to a high limit to burn CPU cycles.
 // ---------------------------------------------------------------------------
-export default async function run(payload = {}) {
+async function run(payload = {}) {
   const limit = payload.limit || 25_000_000;
   console.log(`[Task: Default] Starting prime calculation up to ${limit}...`);
   
@@ -41,7 +41,7 @@ export default async function run(payload = {}) {
 // 2. NAMED EXPORT: Simulated Heavy Network/I-O Delay (~10-15 seconds)
 //    Simulates downloading or calling external third-party services sequentially.
 // ---------------------------------------------------------------------------
-export async function processBatchData(payload = {}) {
+async function processBatchData(payload = {}) {
   const itemsCount = payload.itemsCount || 12;
   const delayPerItemMs = payload.delayPerItemMs || 1000; // 1s per item = 12s total
   
@@ -81,7 +81,7 @@ export async function processBatchData(payload = {}) {
 // 3. NAMED EXPORT: Memory & Array Manipulation (~25-30 seconds)
 //    Allocates arrays, transforms them, and aggregates data in chunks.
 // ---------------------------------------------------------------------------
-export async function heavyDataTransform(payload = {}) {
+async function heavyDataTransform(payload = {}) {
   const iterations = payload.iterations || 30; // ~30 seconds total
   console.log(`[Task: heavyDataTransform] Running ${iterations} transformation cycles...`);
   
@@ -113,4 +113,10 @@ export async function heavyDataTransform(payload = {}) {
     completedCycles: iterations,
     durationSeconds: parseFloat(durationSec),
   };
+}
+
+module.exports = {
+  run,
+  processBatchData,
+  heavyDataTransform
 }

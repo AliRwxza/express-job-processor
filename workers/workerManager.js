@@ -1,4 +1,3 @@
-const worker = require("./worker");
 const { Job } = require('../models');
 const { setTimeout } = require("node:timers/promises");
 const { fork } = require("node:child_process");
@@ -43,6 +42,7 @@ async function startWorkers(workerCount) {
           status: (attempts < maxRetries) ? "queued" : "failed",
           attempts: (attempts < maxRetries) ? attempts + 1 : attempts,
           result: result
+
         }, {
           where: {id: jobId}
         });
@@ -58,9 +58,7 @@ async function startWorkers(workerCount) {
       ]
     });
     
-    if (jobs.length === 0) {
-      console.log("No jobs available");
-      
+    if (jobs.length === 0) {      
       await setTimeout(5000);
       continue;
     }
@@ -70,7 +68,6 @@ async function startWorkers(workerCount) {
     );
 
     if (!idleWorker) {
-      console.log("No workers available");
       await setTimeout(1000);
       continue;
     }

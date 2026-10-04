@@ -16,19 +16,15 @@ process.on("message", async (message) => {
 
     process.send({
       type: "ready",
-      jobId: message.job.id,
       result: JSON.stringify(res)
     });
 
   } catch(err) {
     console.log("ERROR in worker:", err);
-    
+
     process.send({
       type: "failed",
-      attempts: message.job.attempts,
-      maxRetries: message.job.maxRetries,
-      jobId: message.job.id,
-      result: "ERROR" + err.message
+      result: "ERROR: " + err.message
     });
   }
 });

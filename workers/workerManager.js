@@ -1,5 +1,6 @@
 const { Job } = require('../models');
-const { setTimeout } = require("node:timers/promises");
+const { setTimeout, clearTimeout } = require("node:timers");
+const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
 const { sequelize } = require('../config/database');
@@ -13,16 +14,19 @@ function createWorker(workerId) {
   const workerReference = {
     id: workerId,
     process: worker,
-    job: null
+    job: null,
+    timeout: null
   };
 
   worker.on("message", async (message) => {
     
     const { type, result } = message;
-    const { id, attempts, maxRetries } = workerReference.job;
+    const { id } = workerReference.job;
 
     if (type === "ready") {
       console.log(`[WORKER ${workerReference.id} READY]: state set to idle`);
+
+      clearTimeout(workerReference.timeout);
 
       workerReference.job = null;
 
@@ -34,18 +38,7 @@ function createWorker(workerId) {
       });
 
     } else if (type === "failed") {
-      console.log(`[WORKER ${workerReference.id} FAILED]: state set to idle`);
-
-      workerReference.job = null;
-      
-      await Job.update({
-        status: (attempts < maxRetries) ? "queued" : "failed",
-        attempts: (attempts < maxRetries) ? attempts + 1 : attempts,
-        result: result
-
-      }, {
-        where: { id }
-      });
+      handleJobFailure(workerReference, result);
     }
   });
 
@@ -57,6 +50,26 @@ function createWorker(workerId) {
   });
 
   return workerReference;
+}
+
+async function handleJobFailure(workerReference, result) {
+  const { id, attempts, maxRetries } = workerReference.job;
+
+  console.log(
+    `[WORKER ${workerReference.id} FAILED]: state set to idle`
+  );
+
+  workerReference.job = null;
+  clearTimeout(workerReference.timeout);
+
+  await Job.update({
+      status: (attempts < maxRetries) ? "queued" : "failed",
+      attempts: (attempts < maxRetries) ? attempts + 1 : attempts,
+      result: result
+    }, {
+      where: { id }
+    }
+  );
 }
 
 async function startWorkers(workerCount) {
@@ -98,7 +111,7 @@ async function startWorkers(workerCount) {
     });
     
     if (!job) {      
-      await setTimeout(500);
+      await sleep(500);
       continue;
     }
       
@@ -107,11 +120,17 @@ async function startWorkers(workerCount) {
     );
 
     if (!idleWorker) {
-      await setTimeout(100);
+      await sleep(100);
       continue;
     }
 
     idleWorker.job = job;
+
+    idleWorker.timeout = setTimeout(async () => {
+      await handleJobFailure(idleWorker, "ERROR: exceeded the assigned time limit");
+
+      idleWorker.process.kill();
+    }, idleWorker.job.timeout * 1000);
     
     idleWorker.process.send({
       job: job

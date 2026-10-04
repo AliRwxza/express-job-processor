@@ -2,9 +2,9 @@ const { Job } = require('../models');
 const { setTimeout } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
+const { sequelize } = require('../config/database');
 
 let workers = [];
-let jobs = [];
 
 function createWorker(workerId) {
   const workerPath = path.resolve(__dirname, "./worker.js");
@@ -69,15 +69,36 @@ async function startWorkers(workerCount) {
   }
 
   while (true) {
-    jobs = await Job.findAll({
-      where: {status: "queued"},
-      order: [
-        ["createdAt", "ASC"]
-      ]
+    const job = await sequelize.transaction(async (transaction) => {
+
+      const job = await Job.findOne({
+        where: {
+          status: "queued"
+        },
+        order: [
+          ["attempts", "ASC"],
+          ["createdAt", "ASC"]
+        ],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+        skipLocked: true
+      });
+
+      if (!job) {
+        return null;
+      }
+
+      await job.update({
+        status: "processing"
+      }, {
+        transaction
+      });
+
+      return job;
     });
     
-    if (jobs.length === 0) {      
-      await setTimeout(5000);
+    if (!job) {      
+      await setTimeout(500);
       continue;
     }
       
@@ -86,18 +107,14 @@ async function startWorkers(workerCount) {
     );
 
     if (!idleWorker) {
-      await setTimeout(1000);
+      await setTimeout(100);
       continue;
     }
 
-    idleWorker.job = jobs[0];
-
-    await jobs[0].update({
-      status: "processing"
-    });
+    idleWorker.job = job;
     
     idleWorker.process.send({
-      job: jobs[0]
+      job: job
     });
   }
 }

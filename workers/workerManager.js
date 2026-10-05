@@ -46,8 +46,10 @@ function createWorker(workerId) {
     console.error("Worker exited with code:", code);
     console.error("Signal:", signal);
 
-    handleJobFailure(workerReference, "ERROR: exited with code: " + code);
-    
+    if (workerReference.job) {
+      handleJobFailure(workerReference, "ERROR: exited with code: " + code);
+    }
+
     workers[workerReference.id - 1] = createWorker(workerId);
   });
 
@@ -82,7 +84,14 @@ async function startWorkers(workerCount) {
   }
 
   while (true) {
-    const idleWorker = workers.find(w => !w.job);\n\n    if (!idleWorker) {\n      await sleep(100);\n      continue;\n    }\n\n    const job = await sequelize.transaction(async (transaction) => {
+    const idleWorker = workers.find(w => !w.job);
+
+    if (!idleWorker) {
+      await sleep(100);
+      continue;
+    }
+
+    const job = await sequelize.transaction(async (transaction) => {
 
       const job = await Job.findOne({
         where: {

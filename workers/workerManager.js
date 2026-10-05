@@ -45,8 +45,10 @@ function createWorker(workerId) {
   worker.on("exit", (code, signal) => {
     console.error("Worker exited with code:", code);
     console.error("Signal:", signal);
+
+    handleJobFailure(workerReference, "ERROR: exited with code: " + code);
     
-    createWorker(workerId);
+    workers[workerReference.id - 1] = createWorker(workerId);
   });
 
   return workerReference;
@@ -73,8 +75,6 @@ async function handleJobFailure(workerReference, result) {
 }
 
 async function startWorkers(workerCount) {
-  console.log(`Creating ${workerCount} workers`);
-
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
 
@@ -126,15 +126,14 @@ async function startWorkers(workerCount) {
 
     idleWorker.job = job;
 
-    idleWorker.timeout = setTimeout(async () => {
-      await handleJobFailure(idleWorker, "ERROR: exceeded the assigned time limit");
-
-      idleWorker.process.kill();
-    }, idleWorker.job.timeout * 1000);
-    
     idleWorker.process.send({
       job: job
     });
+
+    idleWorker.timeout = setTimeout(async () => {
+      idleWorker.process.kill();
+
+    }, idleWorker.job.timeout * 1000);
   }
 }
 

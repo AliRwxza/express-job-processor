@@ -13,7 +13,8 @@ async function createJob(req, res) {
 
   return responseHandler(res, StatusCodes.ACCEPTED, 
     {
-      message: "Job queued"
+      message: "Job queued",
+      jobId: job.id
     }
   );
 }

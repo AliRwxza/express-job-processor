@@ -373,35 +373,43 @@ npm start
 
 ## Adding a Task
 
-A task is a normal CommonJS JavaScript module that exports the methods that workers are allowed to execute.
+Tasks are normal CommonJS modules. Register each executable task type in `tasks/index.js`.
 
-Example:
+Example handler:
 
 ```js
-async function processData(count, message) {
+async function processBatchData(payload = {}) {
   // task implementation
-
-  return {
-    count,
-    message
-  };
+  return { processed: payload.itemsCount };
 }
 
 module.exports = {
-  processData
+  processBatchData
 };
 ```
 
-The task can then be referenced by a job payload:
+Then register it:
+
+```js
+const { processBatchData } = require("../exampleFiles/sampleTasks");
+
+const handlers = {
+  processBatchData
+};
+```
+
+A client can now submit:
 
 ```json
 {
-  "filePath": "./tasks/example.js",
-  "methodName": "processData",
-  "args": [10, "hello"]
+  "type": "processBatchData",
+  "payload": {
+    "itemsCount": 12
+  }
 }
 ```
 
+The registry is the boundary between external job requests and executable application code. Clients cannot choose arbitrary files or methods.
 ## Design Goals
 
 The project is designed around the following goals:

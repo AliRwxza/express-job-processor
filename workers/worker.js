@@ -1,9 +1,9 @@
+const { getHandler } = require("../tasks");
+
 async function executeJob(job) {
-  const jobModule = require(job.payload.file);
+  const handler = getHandler(job.type);
 
-  const method = jobModule[job.payload.method];
-
-  const result = await method(job.payload);
+  const result = await handler(job.payload);
 
   console.log(`job ${job.id} completed successfully`);
 
@@ -15,11 +15,10 @@ process.on("message", async (message) => {
     const res = await executeJob(message.job);
 
     process.send({
-      type: "ready",
+      type: "completed",
       result: JSON.stringify(res)
     });
-
-  } catch(err) {
+  } catch (err) {
     console.log("ERROR in worker:", err);
 
     process.send({

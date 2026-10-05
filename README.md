@@ -167,10 +167,10 @@ Creates a new job and adds it to the queue.
 {
   "maxRetries": 3,
   "timeout": 60,
+  "type": "processBatchData",
   "payload": {
-    "filePath": "./tasks/example.js",
-    "methodName": "processData",
-    "args": [10, "hello"]
+    "itemsCount": 12,
+    "delayPerItemMs": 1000
   }
 }
 ```
@@ -191,13 +191,13 @@ Maximum execution time for the job, in seconds.
 * Must be a positive integer.
 * When the limit is exceeded, the worker is terminated and the job is handled as a failure.
 
+#### `type`
+
+The registered task type to execute.
+
 #### `payload`
 
-Execution information for the worker.
-
-* `filePath` — path to the JavaScript module.
-* `methodName` — exported function to execute.
-* `args` — arguments passed to the function.
+Data passed to the handler for the selected job type.
 
 ### Response
 

@@ -7,6 +7,12 @@ async function createJob(req, res) {
   const { type, payload, maxRetries, timeout } = req.body;
 
   // Validate the type against the same registry used by workers.
+  if (!type) {
+    return responseHandler(res, StatusCodes.BAD_REQUEST, {
+      error: "Job type is required"
+    });
+  }
+
   getHandler(type);
 
   const job = await Job.create({

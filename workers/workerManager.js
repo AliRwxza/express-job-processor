@@ -23,7 +23,7 @@ function createWorker(workerId) {
     const { type, result } = message;
     const { id } = workerReference.job;
 
-    if (type === "ready") {
+    if (type === "completed") {
       console.log(`[WORKER ${workerReference.id} READY]: state set to idle`);
 
       clearTimeout(workerReference.timeout);
@@ -82,7 +82,7 @@ async function startWorkers(workerCount) {
   }
 
   while (true) {
-    const job = await sequelize.transaction(async (transaction) => {
+    const idleWorker = workers.find(w => !w.job);\n\n    if (!idleWorker) {\n      await sleep(100);\n      continue;\n    }\n\n    const job = await sequelize.transaction(async (transaction) => {
 
       const job = await Job.findOne({
         where: {
@@ -110,17 +110,8 @@ async function startWorkers(workerCount) {
       return job;
     });
     
-    if (!job) {      
+    if (!job) {
       await sleep(500);
-      continue;
-    }
-      
-    const idleWorker = workers.find(
-      w => !w.job
-    );
-
-    if (!idleWorker) {
-      await sleep(100);
       continue;
     }
 

@@ -128,31 +128,33 @@ The important fields are:
 | `createdAt`  | Job creation time                       |
 | `updatedAt`  | Last update time                        |
 
-## Job Payload
+## Job Type and Payload
 
-The payload specifies the JavaScript module and method that the worker should execute.
+A job consists of a **type** and a **payload**.
+
+- `type` identifies which registered task handler should execute the job.
+- `payload` contains the data passed to that handler.
 
 Example:
 
 ```json
 {
-  "filePath": "./tasks/example.js",
-  "methodName": "processData",
-  "args": [10, "hello"]
+  "type": "processBatchData",
+  "payload": {
+    "itemsCount": 12,
+    "delayPerItemMs": 1000
+  }
 }
 ```
 
-The worker effectively performs the following:
+The worker resolves the type through the task registry and executes the corresponding handler:
 
 ```js
-const jobModule = require(filePath);
-const method = jobModule[methodName];
-
-const result = await method(...args);
+const handler = getHandler(job.type);
+const result = await handler(job.payload);
 ```
 
-`args` must be an array. It may be empty when the target method does not require arguments.
-
+The client does not provide a file path or JavaScript method name. Only job types registered by the application can be executed.
 ## Creating a Job
 
 ### `POST /api/jobs`

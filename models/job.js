@@ -9,6 +9,10 @@ const Job = sequelize.define(
       autoIncrement: true,
       primaryKey: true
     },
+    type: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
     payload: {
       type: DataTypes.JSON,
       allowNull: true
@@ -50,7 +54,7 @@ const Job = sequelize.define(
         type: 'CHECK',
         fields: ['status'],
         where: {
-          status: ['received', 'active', 'done', 'failed', 'cancelled']
+          status: ['queued', 'processing', 'completed', 'failed', 'cancelled']
         }
       }
     ],

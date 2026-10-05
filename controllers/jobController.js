@@ -1,5 +1,5 @@
 const responseHandler = require("../helper/responseHandler");
-const { Job, JobLog } = require("../models");
+const { Job } = require("../models");
 const { StatusCodes } = require("http-status-codes");
 
 async function createJob(req, res) {

@@ -1,45 +1,45 @@
+const BaseJob = require("../jobs/job");
+
 // ---------------------------------------------------------------------------
 //    Simulated Heavy Network/I-O Delay (~10-15 seconds)
 //    Simulates downloading or calling external third-party services sequentially.
 // ---------------------------------------------------------------------------
-
-async function processBatchData(payload = {}) {
-  const itemsCount = payload.itemsCount || 12;
-  const delayPerItemMs = payload.delayPerItemMs || 1000; // 1s per item = 12s total
-  
-  console.log(`[Task: processBatchData] Processing ${itemsCount} items sequentially...`);
-  const startTime = Date.now();
-  const processedItems = [];
-
-  for (let i = 1; i <= itemsCount; i++) {
-    // Artificial non-blocking async delay
-    await new Promise((resolve) => setTimeout(resolve, delayPerItemMs));
+class ProcessBatchData extends BaseJob {
+  static async handle(payload) {
+    const itemsCount = payload.itemsCount || 12;
+    const delayPerItemMs = payload.delayPerItemMs || 1000; // 1s per item = 12s total
     
-    processedItems.push({
-      itemId: `ITEM_${i}`,
-      status: 'PROCESSED',
-      timestamp: new Date().toISOString(),
-    });
+    console.log(`[Task: processBatchData] Processing ${itemsCount} items sequentially...`);
+    const startTime = Date.now();
+    const processedItems = [];
 
-    console.log(`[Task: processBatchData] Step ${i}/${itemsCount} completed.`);
-  }
+    for (let i = 1; i <= itemsCount; i++) {
+      // Artificial non-blocking async delay
+      await new Promise((resolve) => setTimeout(resolve, delayPerItemMs));
+      
+      processedItems.push({
+        itemId: `ITEM_${i}`,
+        status: 'PROCESSED',
+        timestamp: new Date().toISOString(),
+      });
 
-  const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  
-  if (payload.failure) {
-    throw new Error("Test error");
+      console.log(`[Task: processBatchData] Step ${i}/${itemsCount} completed.`);
+    }
 
-  } else {
-    return {
-      task: 'Batch Data Processing',
-      totalItems: processedItems.length,
-      durationSeconds: parseFloat(durationSec),
-      items: processedItems,
-    };
+    const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+    
+    if (payload.failure) {
+      throw new Error("Test error");
+
+    } else {
+      return {
+        task: 'Batch Data Processing',
+        totalItems: processedItems.length,
+        durationSeconds: parseFloat(durationSec),
+        items: processedItems,
+      };
+    }
   }
 }
 
-module.exports = {
-  type: "processBatchData",
-  handler: processBatchData
-};
+module.exports = ProcessBatchData;

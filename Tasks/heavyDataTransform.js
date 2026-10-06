@@ -5,8 +5,8 @@ const BaseJob = require("../jobs/job");
 //    Allocates arrays, transforms them, and aggregates data in chunks.
 // ---------------------------------------------------------------------------
 class HeavyDataTransform extends BaseJob {
-  timeout = 10;
-  maxRetries = 1;
+  static timeout = 10;
+  static maxRetries = 1;
 
   static async handle (payload = {}) {
     const iterations = payload.iterations || 30; // ~30 seconds total

@@ -4,6 +4,7 @@ const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
 const { sequelize } = require('../config/database');
+const JobRegistry = require("../registry/jobRegistry");
 
 let workers = [];
 
@@ -75,6 +76,8 @@ async function handleJobFailure(workerReference, result) {
 }
 
 async function startWorkers(workerCount) {
+  const jobRegistry = new JobRegistry("./tasks");
+
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
 
@@ -110,7 +113,7 @@ async function startWorkers(workerCount) {
       return job;
     });
     
-    if (!job) {      
+    if (!job || !jobRegistry.has(job.type)) {
       await sleep(500);
       continue;
     }
@@ -127,7 +130,8 @@ async function startWorkers(workerCount) {
     idleWorker.job = job;
 
     idleWorker.process.send({
-      job: job
+      job: job,
+      path: jobRegistry.get(job.type)
     });
 
     idleWorker.timeout = setTimeout(async () => {

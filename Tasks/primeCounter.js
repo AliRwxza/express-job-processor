@@ -5,6 +5,9 @@ const BaseJob = require("../jobs/job");
 //    Calculates prime numbers up to a high limit to burn CPU cycles.
 // ---------------------------------------------------------------------------
 class PrimeCounter extends BaseJob {
+  static timeout = 12;
+  static maxRetries = 2;
+  
   static async handle (payload) {
     const limit = payload.limit || 25_000_000;
     console.log(`[Task: Default] Starting prime calculation up to ${limit}...`);

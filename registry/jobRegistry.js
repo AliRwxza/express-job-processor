@@ -2,30 +2,25 @@ const path = require("path");
 const fs = require("fs");
 
 class JobRegistry {
-  #map
+  #map = {}
 
   constructor(folderPath) {
-    if (folderPath === undefined) {
-      this.#map = new Map();
-    
-    } else {
+    this.#map = new Map();
+    if (folderPath !== undefined) {
       this.#discoverDirectory(folderPath);
     }
   }
 
   #discoverDirectory(folderPath) {
-    const absolutePath = path.resolve(folderPath);
+    const absolutePath = path.resolve(folderPath); // folderPath: from the terminal directory (cwd)
     const files = fs.readdirSync(absolutePath);
 
     for (const file of files) {
       if (file.endsWith('.js')) {
-        const exported = require(folderPath);
+        const jobPath = path.join(absolutePath, file);
+        const jobClass = require(jobPath);
 
-        if (exported.type === undefined || exported.handler === undefined) {
-          continue;
-        }
-
-        this.register(exported.type, exported.handler);
+        this.register(jobClass.name, jobPath);
       }
     }
   }

@@ -5,6 +5,9 @@ const BaseJob = require("../jobs/job");
 //    Simulates downloading or calling external third-party services sequentially.
 // ---------------------------------------------------------------------------
 class ProcessBatchData extends BaseJob {
+  static timeout = 15;
+  static maxRetries = 4;
+
   static async handle(payload) {
     const itemsCount = payload.itemsCount || 12;
     const delayPerItemMs = payload.delayPerItemMs || 1000; // 1s per item = 12s total

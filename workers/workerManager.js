@@ -4,6 +4,7 @@ const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
 const { sequelize } = require('../config/database');
+const JobRegistry = require("../registry/jobRegistry");
 
 let workers = [];
 
@@ -75,6 +76,8 @@ async function handleJobFailure(workerReference, result) {
 }
 
 async function startWorkers(workerCount) {
+  const jobRegistry = new JobRegistry("./tasks");
+
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
 
@@ -82,39 +85,42 @@ async function startWorkers(workerCount) {
   }
 
   while (true) {
-    const job = await sequelize.transaction(async (transaction) => {
+    const transaction = await sequelize.transaction();
 
-      const job = await Job.findOne({
-        where: {
-          status: "queued"
-        },
-        order: [
-          ["attempts", "ASC"],
-          ["createdAt", "ASC"]
-        ],
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-        skipLocked: true
-      });
-
-      if (!job) {
-        return null;
-      }
-
-      await job.update({
-        status: "processing"
-      }, {
-        transaction
-      });
-
-      return job;
+    const job = await Job.findOne({
+      where: {
+        status: "queued"
+      },
+      order: [
+        ["attempts", "ASC"],
+        ["createdAt", "ASC"]
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true
     });
-    
-    if (!job) {      
+
+    if (!job) {
+      await transaction.rollback();
+      return null;
+    }
+
+    await job.update({
+      status: "processing"
+    }, {
+      transaction
+    });
+
+    if (!jobRegistry.validate(job.type)) {
+      await job.update({
+        status: "failed",
+        result: "ERROR: invalid job"
+      });
+      
       await sleep(500);
       continue;
     }
-      
+    
     const idleWorker = workers.find(
       w => !w.job
     );
@@ -127,7 +133,8 @@ async function startWorkers(workerCount) {
     idleWorker.job = job;
 
     idleWorker.process.send({
-      job: job
+      job: job,
+      path: jobRegistry.get(job.type)
     });
 
     idleWorker.timeout = setTimeout(async () => {

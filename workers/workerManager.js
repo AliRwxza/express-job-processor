@@ -85,39 +85,42 @@ async function startWorkers(workerCount) {
   }
 
   while (true) {
-    const job = await sequelize.transaction(async (transaction) => {
+    const transaction = await sequelize.transaction();
 
-      const job = await Job.findOne({
-        where: {
-          status: "queued"
-        },
-        order: [
-          ["attempts", "ASC"],
-          ["createdAt", "ASC"]
-        ],
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-        skipLocked: true
-      });
-
-      if (!job) {
-        return null;
-      }
-
-      await job.update({
-        status: "processing"
-      }, {
-        transaction
-      });
-
-      return job;
+    const job = await Job.findOne({
+      where: {
+        status: "queued"
+      },
+      order: [
+        ["attempts", "ASC"],
+        ["createdAt", "ASC"]
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true
     });
-    
-    if (!job || !jobRegistry.has(job.type)) {
+
+    if (!job) {
+      await transaction.rollback();
+      return null;
+    }
+
+    await job.update({
+      status: "processing"
+    }, {
+      transaction
+    });
+
+    if (!jobRegistry.validate(job.type)) {
+      await job.update({
+        status: "failed",
+        result: "ERROR: invalid job"
+      });
+      
       await sleep(500);
       continue;
     }
-      
+    
     const idleWorker = workers.find(
       w => !w.job
     );

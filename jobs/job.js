@@ -1,8 +1,8 @@
 const { Job } = require("../models");
 
 class BaseJob {
-  timeout = 60;
-  maxRetries = 3;
+  static timeout = 60;
+  static maxRetries = 3;
 
   constructor() {
     throw new Error(`BaseJob and any of its subclasses are static utility classes and should not be instantiated.`)
@@ -18,7 +18,6 @@ class BaseJob {
     }
 
     if (Number.isNaN(maxRetries) || !Number.isInteger(maxRetries) || maxRetries < 0) {
-      
       return 1;
     }
     

@@ -1,14 +1,19 @@
 const responseHandler = require("../helper/responseHandler");
-const { Job, JobLog } = require("../models");
+const { Job } = require("../models");
 const { StatusCodes } = require("http-status-codes");
+const jobRegistry = require("../registry/jobRegistry");
 
 async function createJob(req, res) {
-  const {payload, maxRetries, timeout} = req.body;
+  const { type, payload } = req.body;
+
+  const jobPath = jobRegistry.get(type);
+  const jobClass = require(jobPath);
 
   const job = await Job.create({
+    type,
     payload,
-    maxRetries,
-    timeout
+    timeout: jobClass.timeout,
+    maxRetries: jobClass.maxRetries
   });
 
   return responseHandler(res, StatusCodes.ACCEPTED, 

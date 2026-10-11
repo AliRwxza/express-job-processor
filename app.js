@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 require("dotenv").config();
+require("./registry/jobRegistry").discoverDirectory("./tasks");
 
 var indexRouter = require('./routes/index');
 var jobRouter = require('./routes/job');

@@ -1,18 +1,14 @@
-async function executeJob(job) {
-  const jobModule = require(job.payload.file);
+async function executeJob(job, path) {
+  const jobModule = require(path);
 
-  const method = jobModule[job.payload.method];
-
-  const result = await method(job.payload);
-
-  console.log(`job ${job.id} completed successfully`);
+  const result = await jobModule.run(job.payload);
 
   return result;
 }
 
 process.on("message", async (message) => {
   try {
-    const res = await executeJob(message.job);
+    const res = await executeJob(message.job, message.path);
 
     process.send({
       type: "ready",

@@ -60,15 +60,6 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.literal("CURRENT_TIMESTAMP")
       }
-    }
-  );
-
-    await queryInterface.addConstraint('jobs', {
-      fields: ['status'],
-      type: 'CHECK',
-      where: {
-        status: ['queued', 'processing', 'completed', 'failed', 'cancelled']
-      }
     });
   },
 

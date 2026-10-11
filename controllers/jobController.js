@@ -1,13 +1,13 @@
 const responseHandler = require("../helper/responseHandler");
 const { Job } = require("../models");
 const { StatusCodes } = require("http-status-codes");
-const JobRegistry = require("../registry/jobRegistry");
+const jobRegistry = require("../registry/jobRegistry");
 
 async function createJob(req, res) {
   const { type, payload } = req.body;
-  const jobRegistry = new JobRegistry("./tasks");
 
-  const jobClass = require(jobRegistry.get(type));
+  const jobPath = jobRegistry.get(type);
+  const jobClass = require(jobPath);
 
   const job = await Job.create({
     type,

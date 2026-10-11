@@ -1,23 +1,16 @@
 const path = require("path");
 const fs = require("fs");
+const { platform } = process;
+const locale = path[platform === `win32` ? `win32` : `posix`];
+
 const BaseJob = require("../jobs/job");
 
 class JobRegistry {
-  #map = {}
+  #map = new Map();
 
-  constructor(folderPath) {
-    this.#map = new Map();
-    if (folderPath !== undefined) {
-      this.#discoverDirectory(folderPath);
-    }
-  }
-
-  #validateClass(type, filePath) {
-    const jobClass = require(filePath);
-
-    if (!type) {
-      throw new Error("Job type should be a valid string");
-    }
+  #validateClass(filePath) {
+    const localePath = filePath.replaceAll(path.sep, locale.sep);
+    const jobClass = require(localePath);
     
     if (typeof jobClass !== 'function') {
       throw new Error("Job modules must export a valid named class");
@@ -28,38 +21,49 @@ class JobRegistry {
     }
 
     if (typeof jobClass.handle !== 'function' ||
-      jobClass.handle === BaseJob.handle
-    ) {
+      jobClass.handle === BaseJob.handle)
+    {
       throw new Error("Job class must implement handle()");
     }
 
-    return true;
+    return jobClass.name;
   }
 
-  #discoverDirectory(folderPath) {
+  discoverDirectory(folderPath) {
     const absolutePath = path.resolve(folderPath); // folderPath: from the terminal directory (cwd)
     const files = fs.readdirSync(absolutePath);
 
     for (const file of files) {
-      if (file.endsWith('.js')) {
-        this.#validateClass()
+      const filePath = path.join(absolutePath, file);
 
-        this.register(jobClass.name, jobPath);
+      if (filePath.endsWith('.js')) {
+        try {
+          
+          let jobClassName = this.#validateClass(filePath);
+
+          if (jobClassName) {
+            this.register(jobClassName, filePath);
+          }
+
+        } catch (err) {
+          console.error(`File ${filePath} does not meet the requirements: ${err}`);
+        }
       }
     }
   }
 
-  #fileExists(filePath) {
-    return fs.existsSync(filePath);
-  }
-
-  #isInDict(type) {
-    return this.#map.has(type);
-  }
-
   register(type, filePath) {
-    this.#validateClass(type, filePath);
+    if (!type || typeof type !== 'string') {
+      throw new Error("Job type must be a non-empty string.");
+    }
 
+    if (this.#map.has(type)) {
+      throw new Error(`Job type ${type} already exists.`);
+    }
+
+    if (!this.#validateClass(filePath)) {
+      throw new Error(`Class validation failed.`);
+    }
     this.#map.set(type, filePath);
   }
 
@@ -68,9 +72,9 @@ class JobRegistry {
   }
 
   validateRuntimeKey(type) {
-    const filePath = this.#isInDict(type);
+    const filePath = this.#map.get(type);
     
-    return filePath && this.#fileExists(filePath); 
+    return filePath && fs.existsSync(filePath);
   }
 
   get(type) {
@@ -78,4 +82,6 @@ class JobRegistry {
   }
 }
 
-module.exports = JobRegistry;
+const jobRegistry = new JobRegistry();
+
+module.exports = jobRegistry;

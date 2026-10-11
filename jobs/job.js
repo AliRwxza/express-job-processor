@@ -28,11 +28,11 @@ class BaseJob {
       timeout
     });
 
-    return job ? 0 : 1;
+    return job;
   }
 
   static async failed() {
-    throw new Error("BaseJob 'failed' is not yet implemented")
+    throw new Error("BaseJob 'failed' is not yet implemented");
   }
 
   static async run(payload) {

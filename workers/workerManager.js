@@ -4,7 +4,7 @@ const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
 const { sequelize } = require('../config/database');
-const JobRegistry = require("../registry/jobRegistry");
+const jobRegistry = require("../registry/jobRegistry");
 
 let workers = [];
 
@@ -76,8 +76,6 @@ async function handleJobFailure(workerReference, result) {
 }
 
 async function startWorkers(workerCount) {
-  const jobRegistry = new JobRegistry("./tasks");
-
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
 
@@ -102,7 +100,7 @@ async function startWorkers(workerCount) {
 
     if (!job) {
       await transaction.rollback();
-      return null;
+      continue;
     }
 
     await job.update({
@@ -111,7 +109,10 @@ async function startWorkers(workerCount) {
       transaction
     });
 
-    if (!jobRegistry.validate(job.type)) {
+    transaction.commit();
+
+    if (!jobRegistry.validateRuntimeKey(job.type)) {
+
       await job.update({
         status: "failed",
         result: "ERROR: invalid job"

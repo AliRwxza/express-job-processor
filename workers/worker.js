@@ -3,8 +3,6 @@ async function executeJob(job, path) {
 
   const result = await jobModule.run(job.payload);
 
-  console.log(`job ${job.id} completed successfully`);
-
   return result;
 }
 

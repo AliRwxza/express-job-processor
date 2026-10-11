@@ -9,7 +9,7 @@ class BaseJob {
   }
 
   static async handle(payload) {
-    throw new Error(`Method handle() is not implemented in subclass ${this.constructor.name}`);
+    throw new Error(`Method handle() is not implemented in subclass ${this.name}`);
   }
 
   static async dispatch(payload = {}) {
@@ -42,8 +42,6 @@ class BaseJob {
     } catch(err) {
       console.error(`Error executing ${this.name}`);
     }
-
-    throw error;
   }
 }
 

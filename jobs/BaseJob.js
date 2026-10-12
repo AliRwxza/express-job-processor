@@ -41,6 +41,7 @@ class BaseJob {
       return result;
     } catch(err) {
       console.error(`Error executing ${this.name}`);
+      throw err;
     }
   }
 }

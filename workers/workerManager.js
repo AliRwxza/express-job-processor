@@ -6,7 +6,6 @@ const path = require("path");
 const { sequelize } = require('../config/database');
 
 const jobRegistry = require("../registry/jobRegistry");
-jobRegistry.discoverDirectory("./tasks");
 
 let workers = [];
 let isRunning = false;
@@ -148,7 +147,7 @@ async function assignJobToWorker(workerReference, job) {
   }
 
   workerReference.timeout = setTimeout(async () => {
-    workerReference.process.kill();
+    await workerReference.process.kill();
     
   }, workerReference.job.timeout * 1000);
 }

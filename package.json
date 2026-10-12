@@ -8,7 +8,9 @@
     "models/",
     "jobs/",
     "registry/",
+    "config/",
     "index.js",
+    "bin/",
     "README.md"
   ],
   "scripts": {

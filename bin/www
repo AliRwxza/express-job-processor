@@ -3,6 +3,7 @@
 /**
  * Module dependencies.
  */
+require("dotenv").config();
 
 var app = require('../app');
 var { initDB } = require("../config/database")

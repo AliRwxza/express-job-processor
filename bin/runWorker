@@ -1,0 +1,3 @@
+const WorkerManager = require('../workers/workerManager');
+
+WorkerManager.startWorkers(process.env.WORKERS_COUNT);

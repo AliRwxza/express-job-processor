@@ -4,9 +4,11 @@ const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
 const { sequelize } = require('../config/database');
+
 const jobRegistry = require("../registry/jobRegistry");
 
 let workers = [];
+let isRunning = false;
 
 function createWorker(workerId) {
   const workerPath = path.resolve(__dirname, "./worker.js");
@@ -16,133 +18,200 @@ function createWorker(workerId) {
     id: workerId,
     process: worker,
     job: null,
-    timeout: null
+    timeout: null,
+    sto: false
   };
 
   worker.on("message", async (message) => {
     
     const { type, result } = message;
-    const { id } = workerReference.job;
+    const job = workerReference.job;
 
-    if (type === "ready") {
-      console.log(`[WORKER ${workerReference.id} READY]: state set to idle`);
+    if (!job) return;
 
+    if (type === "completed") {
       clearTimeout(workerReference.timeout);
-
+      
       workerReference.job = null;
 
-      await Job.update({
-        status: "completed",
-        result: result
-      }, {
-        where: { id }
-      });
+      try {
+        await Job.update({
+          status: "completed",
+          result: result
+        }, {
+          where: { id: job.id, status: "processing" }
+        });
+      } catch (err) {
+        console.error(`[WORKER ${workerReference.id}] Could not complete its job with results: ${err}`);
+      }
 
     } else if (type === "failed") {
-      handleJobFailure(workerReference, result);
+      await handleJobFailure(workerReference, result);
     }
   });
 
-  worker.on("exit", (code, signal) => {
-    console.error("Worker exited with code:", code);
-    console.error("Signal:", signal);
+  worker.on("exit", async (code, signal) => {
+    clearTimeout(workerReference.timeout);
+    workerReference.timeout = null;
 
-    handleJobFailure(workerReference, "ERROR: exited with code: " + code);
-    
-    workers[workerReference.id - 1] = createWorker(workerId);
+    console.error(`[WORKER ${workerReference.id}]: Exited with code and signal`, code, signal);
+
+    if (workerReference.job) {
+      await handleJobFailure(workerReference, "ERROR: exited with code: " + code);
+    }
+
+    if (!workerReference.sto) {
+      workers[workerReference.id - 1] = createWorker(workerId);
+    }
   });
 
   return workerReference;
 }
 
 async function handleJobFailure(workerReference, result) {
-  const { id, attempts, maxRetries } = workerReference.job;
+  const job = workerReference.job;
 
-  console.log(
-    `[WORKER ${workerReference.id} FAILED]: state set to idle`
-  );
-
-  workerReference.job = null;
+  if (!job) {
+    return;
+  }
+  
   clearTimeout(workerReference.timeout);
+  workerReference.timeout = null;
+  workerReference.job = null;
 
-  await Job.update({
-      status: (attempts < maxRetries) ? "queued" : "failed",
-      attempts: (attempts < maxRetries) ? attempts + 1 : attempts,
+  const canRetry = job.attempts < job.maxRetries;
+
+  try {
+    await Job.update({
+      status: canRetry ? "queued" : "failed",
+      attempts: canRetry ? job.attempts + 1 : job.attempts,
       result: result
-    }, {
-      where: { id }
-    }
+      }, {
+        where: { id: job.id }
+      }
+    );
+    
+  } catch (err) {
+    console.error(`[WORKER ${workerReference.id}] Could not update failed job:`, err);
+  }
+}
+
+async function claimJobs(workerCount) {
+  const transaction = await sequelize.transaction();
+
+  const jobs = await Job.findAll({
+    where: { status: "queued" },
+    order: [
+      ["attempts", "ASC"],
+      ["createdAt", "ASC"]
+    ],
+    limit: workerCount,
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+    skipLocked: true
+  });
+
+  for (const job of jobs) {
+    await job.update(
+      { "status": "processing" },
+      { transaction }
+    );
+  }
+
+  transaction.commit();
+  
+  return jobs;
+}
+
+async function assignJobToWorker(workerReference, job) {
+  if (!jobRegistry.validateRuntimeKey(job.type)) {
+    await job.update({
+      status: "failed",
+      result: "ERROR: Invalid job"
+    });
+
+    throw new Error(`Invalid job type ${job.type}`);
+  }
+
+  const jobPath = jobRegistry.get(job.type);
+  
+  workerReference.job = job;
+
+  try {
+    workerReference.process.send({
+      job: job,
+      path: jobPath
+    });
+  } catch(err) {
+    await handleJobFailure(workerReference, err.message);
+  }
+
+  workerReference.timeout = setTimeout(async () => {
+    await workerReference.process.kill();
+    
+  }, workerReference.job.timeout * 1000);
+}
+
+async function runCycle() {
+  const idleWorkers = workers.filter(
+    (workerReference) => !workerReference.job
   );
+
+  if (idleWorkers.length === 0) {
+    return;
+  }
+
+  const claimedJobs = await claimJobs(idleWorkers.length);
+
+  if (claimedJobs.length === 0) {
+    return;
+  }
+
+  for (let i = 0; i < claimedJobs.length; i++) {
+    assignJobToWorker(idleWorkers[i], claimedJobs[i]);
+  }
 }
 
 async function startWorkers(workerCount) {
+  if (isRunning) return;
+  
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
-
+    
     workers.push(workerReference);
   }
+  
+  isRunning = true;
 
-  while (true) {
-    const transaction = await sequelize.transaction();
-
-    const job = await Job.findOne({
-      where: {
-        status: "queued"
-      },
-      order: [
-        ["attempts", "ASC"],
-        ["createdAt", "ASC"]
-      ],
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-      skipLocked: true
-    });
-
-    if (!job) {
-      await transaction.rollback();
-      continue;
+  while (isRunning) {
+    try {
+      await runCycle();
+    } catch(err) {
+      console.error("[MANAGER] Cycle failed due to:", err);
     }
 
-    await job.update({
-      status: "processing"
-    }, {
-      transaction
-    });
-
-    transaction.commit();
-
-    if (!jobRegistry.validateRuntimeKey(job.type)) {
-
-      await job.update({
-        status: "failed",
-        result: "ERROR: invalid job"
-      });
-      
-      await sleep(500);
-      continue;
+    if (isRunning) {
+      await sleep(1000);
     }
-    
-    const idleWorker = workers.find(
-      w => !w.job
-    );
-
-    if (!idleWorker) {
-      await sleep(100);
-      continue;
-    }
-
-    idleWorker.job = job;
-
-    idleWorker.process.send({
-      job: job,
-      path: jobRegistry.get(job.type)
-    });
-
-    idleWorker.timeout = setTimeout(async () => {
-      idleWorker.process.kill();
-
-    }, idleWorker.job.timeout * 1000);
   }
 }
 
-module.exports = startWorkers;
+async function stopWorkers() {
+  isRunning = false;
+  
+  for (const workerRef of workers) {
+    workerRef.sto = true;
+
+    while (workerRef.job);
+
+    clearTimeout(workerRef.timeout);
+
+    workerRef.process.job = null;
+    workerRef.process.timeout = null;
+  }
+}
+
+module.exports = {
+  startWorkers,
+  stopWorkers
+};

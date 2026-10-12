@@ -1,16 +1,16 @@
 const path = require("path");
 const fs = require("fs");
 const { platform } = process;
-const locale = path[platform === `win32` ? `win32` : `posix`];
+const local = path[platform === `win32` ? `win32` : `posix`];
 
-const BaseJob = require("../jobs/job");
+const BaseJob = require("../jobs/BaseJob");
 
 class JobRegistry {
   #map = new Map();
 
   #validateClass(filePath) {
-    const localePath = filePath.replaceAll(path.sep, locale.sep);
-    const jobClass = require(localePath);
+    const localPath = filePath.replaceAll(path.sep, local.sep);
+    const jobClass = require(localPath);
     
     if (typeof jobClass !== 'function') {
       throw new Error("Job modules must export a valid named class");

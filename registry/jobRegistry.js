@@ -3,7 +3,7 @@ const fs = require("fs");
 const { platform } = process;
 const locale = path[platform === `win32` ? `win32` : `posix`];
 
-const BaseJob = require("../jobs/job");
+const BaseJob = require("../jobs/BaseJob");
 
 class JobRegistry {
   #map = new Map();

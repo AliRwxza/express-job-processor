@@ -16,8 +16,6 @@ process.on("message", async (message) => {
     });
 
   } catch(err) {
-    console.log("ERROR in worker:", err);
-
     process.send({
       type: "failed",
       result: "ERROR: " + err.message

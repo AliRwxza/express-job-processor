@@ -1,0 +1,8 @@
+const { setTimeout } = require("timers/promises");
+// const { sequelize } = require("../config/database");
+
+const WorkerManager = require('../workers/workerManager');
+
+WorkerManager.startWorkers(5);
+
+// WorkerManager.stopWorkers();

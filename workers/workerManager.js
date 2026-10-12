@@ -6,6 +6,7 @@ const path = require("path");
 const { sequelize } = require('../config/database');
 
 const jobRegistry = require("../registry/jobRegistry");
+jobRegistry.discoverDirectory("./tasks");
 
 let workers = [];
 let isRunning = false;
@@ -99,7 +100,7 @@ async function handleJobFailure(workerReference, result) {
 async function claimJobs(workerCount) {
   const transaction = await sequelize.transaction();
 
-  const jobs = Job.findAll({
+  const jobs = await Job.findAll({
     where: { status: "queued" },
     order: [
       ["attempts", "ASC"],
@@ -161,10 +162,12 @@ async function runCycle() {
     return;
   }
 
-  const jobs = claimJobs(idleWorkers.length);
+  if (claimedJobs.length === 0) {
+    return;
+  }
 
-  for (let i = 0; i < idleWorkers.length; i++) {
-    assignJobToWorker(idleWorkers[i], jobs[i]);
+  for (let i = 0; i < claimedJobs.length; i++) {
+    assignJobToWorker(idleWorkers[i], claimedJobs[i]);
   }
 }
 

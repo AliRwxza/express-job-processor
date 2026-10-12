@@ -162,6 +162,8 @@ async function runCycle() {
     return;
   }
 
+  const claimedJobs = await claimJobs(idleWorkers.length);
+
   if (claimedJobs.length === 0) {
     return;
   }

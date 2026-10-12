@@ -13,19 +13,19 @@ class BaseJob {
   }
 
   static async dispatch(payload = {}) {
-    if (Number.isNaN(timeout) || !Number.isInteger(timeout) || timeout < 0) {
+    if (Number.isNaN(this.timeout) || !Number.isInteger(this.timeout) || this.timeout < 0) {
       return 1;
     }
 
-    if (Number.isNaN(maxRetries) || !Number.isInteger(maxRetries) || maxRetries < 0) {
+    if (Number.isNaN(this.maxRetries) || !Number.isInteger(this.maxRetries) || this.maxRetries < 0) {
       return 1;
     }
     
     const job = await Job.create({
       type: this.name,
       payload: payload,
-      maxRetries,
-      timeout
+      maxRetries: this.maxRetries,
+      timeout: this.timeout
     });
 
     return job;

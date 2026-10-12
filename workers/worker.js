@@ -11,7 +11,7 @@ process.on("message", async (message) => {
     const res = await executeJob(message.job, message.path);
 
     process.send({
-      type: "ready",
+      type: "completed",
       result: JSON.stringify(res)
     });
 

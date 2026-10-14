@@ -1,0 +1,37 @@
+class Configuration {
+  options
+  
+  constructor() {
+    this.options = {
+      workersCount: 1,
+      jobsDirectory: "./jobs",
+      driver: "database",
+      database: {
+        name: null,
+        dialect: "mysql",
+        host: "localhost",
+        port: 3306,
+        user: "root",
+        password: null,
+        logging: false
+      }
+    };
+  }
+
+  set(userConfig = {}) {
+    this.options = {
+      ...this.options,
+      ...userConfig
+    };
+  }
+
+  get(key) {
+    return this.options[key];
+  }
+
+  getAll() {
+    return this.options
+  }
+};
+
+module.exports = new Configuration;

@@ -15,7 +15,6 @@ const Job = sequelize.define(
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    // ToDo: hehe, mahmoud comented this part just for fun
     payload: {
       type: DataTypes.JSON,
       allowNull: true

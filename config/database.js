@@ -43,5 +43,8 @@ async function closeConnection(sequelize) {
 
 module.exports = { 
   init,
-  closeConnection
+  closeConnection,
+  get sequelize() {
+    return sequelize;
+  }
 };

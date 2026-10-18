@@ -1,4 +1,4 @@
-const BaseJob = require("../jobs/BaseJob");
+const BaseJob = require("../../jobs/BaseJob");
 
 // ---------------------------------------------------------------------------
 //    Simulated Heavy Network/I-O Delay (~10-15 seconds)

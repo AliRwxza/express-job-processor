@@ -1,5 +1,3 @@
-const { Job } = require("../models");
-
 class BaseJob {
   static timeout = 60;
   static maxRetries = 3;
@@ -20,6 +18,11 @@ class BaseJob {
     if (Number.isNaN(this.maxRetries) || !Number.isInteger(this.maxRetries) || this.maxRetries < 0) {
       return 1;
     }
+
+    const { init } = require("../config/database");
+    await init();
+
+    const { Job } = require("../models");
     
     const job = await Job.create({
       type: this.name,

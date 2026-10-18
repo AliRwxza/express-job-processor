@@ -98,7 +98,6 @@ async function handleJobFailure(workerReference, result) {
 }
 
 async function claimJobs(workerCount) {
-  // const sequelize = init();
   const transaction = await sequelize.transaction();
 
   const jobs = await Job.findAll({
@@ -176,6 +175,7 @@ async function runCycle() {
 
 async function startWorkers(workerCount) {
   if (isRunning) return;
+
   sequelize = await init();
 
   for (let i = 1; i <= workerCount; i++) {

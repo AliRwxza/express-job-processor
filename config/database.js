@@ -26,8 +26,6 @@ function init() {
   sequelize.authenticate()
 
   require("../models");
-
-  console.log("connected to database");
   
   return sequelize;
 }
@@ -35,10 +33,6 @@ function init() {
 async function closeConnection(sequelize) {
   if (sequelize && sequelize.connectionManager && sequelize.connectionManager.pool) {
     await sequelize.close();
-    console.log("Database connection terminated successfully");
-
-  } else {
-    console.log("No active connection found");
   }
 }
 

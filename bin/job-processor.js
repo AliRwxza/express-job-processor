@@ -18,18 +18,10 @@ function printHelp() {
     Usage:
       job-processor start [options]
 
-    Required options:
-      --db-host <host>
-      --db-port <port>
-      --db-name <name>
-      --db-user <user>
-      --db-password <password>
-      --workers <count>
-      --jobs-directory <path>
-
-    Other options:
-      --help, -h`
-  );
+    Options:
+      --config <path>   Configuration file (default: ./queue.config.js)
+      --help, -h        Show help
+  `);
 }
 
 function isPositiveInteger(value) {
@@ -39,14 +31,12 @@ function isPositiveInteger(value) {
 }
 
 async function main() {
-  const { values, positionals } = parseArgs({
+  const { values } = parseArgs({
     args: process.argv.slice(2),
     strict: true,
     allowPositionals: true,
     options: {
-      ...Object.fromEntries(
-        args.map((name) => [name, { type: "string" }])
-      ),
+      config: { type: "string" },
       help: { type: "boolean", short: "h" }
     }
   });
@@ -57,40 +47,27 @@ async function main() {
     return;
   }
 
-  for (const name of args) {
-    if (values[name] === undefined ||
-      (name !== "db-password" && values[name].trim() === "")
-    ) {
-      throw new Error(`missing required argument: --${name}`);
-    };
+  const configPath = path.resolve(process.cwd(), values.config ?? "queue.config.js");
+  const config = require(configPath);
+
+  if (!config || typeof config !== "object") {
+    throw new Error("Configuration must export an object");
   }
 
-  if (!isPositiveInteger(values.workers)) {
-    throw new Error("Workers count must be a non-negative value");
-  }
-
-  const workersCount = Number(values.workers);
-  const dbPort = Number(values["db-port"]) || 3306; // default mysql port
-
-  if (!isPositiveInteger(values["db-port"]) || dbPort > 65535) {
-    throw new Error("Database port must be an integer between 1 and 65535");
+  if (typeof config.jobsDirectory !== "string" ||
+    config.jobsDirectory.trim() === ""
+  ) {
+    throw new Error("No directory provided for defined jobs");
   }
 
   const queue = require("../index");
   
   queue.configure({
-    driver: "database",
-    workersCount,
-    jobsDirectory: path.resolve(values["jobs-directory"]),
-    database: {
-      host: values["db-host"],
-      port: dbPort,
-      name: values["db-name"],
-      user: values["db-user"],
-      password: values["db-password"],
-      dialect: "mysql",
-      logging: false
-    }
+    ...config,
+    jobsDirectory: path.resolve(
+      path.dirname(configPath),
+      config.jobsDirectory
+    )
   });
 
   await queue.startWorkers();

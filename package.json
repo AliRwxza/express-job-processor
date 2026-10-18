@@ -17,7 +17,6 @@
     "job-processor": "./bin/job-processor.js"
   },
   "scripts": {
-    "worker": "node ./bin/runWorker",
     "cli": "node ./bin/job-processor.js"
   },
   "keywords": [

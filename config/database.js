@@ -15,8 +15,9 @@ function init() {
     dbConfig.user,
     dbConfig.password,
     {
-      host: dbConfig.host,
-      dialect: dbConfig.dialect,
+      host: dbConfig.host || "localhost",
+      dialect: dbConfig.dialect || "mysql",
+      port: dbConfig.port || 3306,
 
       logging: dbConfig.logging
     }
@@ -25,8 +26,6 @@ function init() {
   sequelize.authenticate()
 
   require("../models");
-
-  console.log("connected to database");
   
   return sequelize;
 }
@@ -34,10 +33,6 @@ function init() {
 async function closeConnection(sequelize) {
   if (sequelize && sequelize.connectionManager && sequelize.connectionManager.pool) {
     await sequelize.close();
-    console.log("Database connection terminated successfully");
-
-  } else {
-    console.log("No active connection found");
   }
 }
 

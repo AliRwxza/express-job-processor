@@ -21,7 +21,11 @@ class Configuration {
   set(userConfig = {}) {
     this.options = {
       ...this.options,
-      ...userConfig
+      ...userConfig,
+      database: {
+        ...this.options.database,
+        ...userConfig.database
+      }
     };
   }
 

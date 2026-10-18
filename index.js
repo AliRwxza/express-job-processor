@@ -21,7 +21,7 @@ async function start() {
     await init();
 
   } else if (config.driver === "file") {
-    console.log("file driver will be installed in this place");
+    throw new Error("Not implemented yet");
 
   } else {
     throw new Error("Invalid driver selected")

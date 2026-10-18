@@ -1,4 +1,4 @@
-const BaseJob = require("../jobs/BaseJob");
+const BaseJob = require("../../jobs/BaseJob");
 
 // ---------------------------------------------------------------------------
 //    Heavy CPU Computation (~15-20 seconds)

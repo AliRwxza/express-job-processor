@@ -1,3 +1,18 @@
-const WorkerManager = require('../workers/workerManager');
+const queue = require("../index");
 
-WorkerManager.startWorkers(process.env.WORKERS_COUNT);
+const json = {
+  driver: "database", // database | file
+  database: {
+    name: "job_processor",
+    dialect: "mysql", // mysql | redis | elastic | etc.
+    host: "localhost",
+    port: 3306,
+    user: "root",
+    password: "YaFa132@",
+    logging: false
+  }
+}
+
+queue.configure(json);
+
+queue.startWorkers();

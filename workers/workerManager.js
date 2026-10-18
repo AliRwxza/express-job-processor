@@ -3,12 +3,13 @@ const { setTimeout, clearTimeout } = require("node:timers");
 const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
 const path = require("path");
-const { sequelize } = require('../config/database');
 
+const { init } = require("../config/database");
 const jobRegistry = require("../registry/jobRegistry");
 
 let workers = [];
 let isRunning = false;
+let sequelize = null;
 
 function createWorker(workerId) {
   const workerPath = path.resolve(__dirname, "./worker.js");
@@ -174,7 +175,9 @@ async function runCycle() {
 
 async function startWorkers(workerCount) {
   if (isRunning) return;
-  
+
+  sequelize = await init();
+
   for (let i = 1; i <= workerCount; i++) {
     const workerReference = createWorker(i);
     

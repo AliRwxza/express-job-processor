@@ -1,4 +1,4 @@
-const BaseJob = require("../jobs/BaseJob");
+const BaseJob = require("../../jobs/BaseJob");
 
 // ---------------------------------------------------------------------------
 //    Memory & Array Manipulation (~25-30 seconds)

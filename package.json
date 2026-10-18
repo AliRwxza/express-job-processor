@@ -13,8 +13,12 @@
     "bin/",
     "README.md"
   ],
+  "bin": {
+    "job-processor": "./bin/job-processor.js"
+  },
   "scripts": {
-    "worker": "node ./bin/runWorker"
+    "worker": "node ./bin/runWorker",
+    "cli": "node ./bin/job-processor.js"
   },
   "keywords": [
     "worker",
@@ -38,6 +42,8 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
     "nodemon": "^3.1.14"
   }
 }

@@ -15,8 +15,9 @@ function init() {
     dbConfig.user,
     dbConfig.password,
     {
-      host: dbConfig.host,
-      dialect: dbConfig.dialect,
+      host: dbConfig.host || "localhost",
+      dialect: dbConfig.dialect || "mysql",
+      port: dbConfig.port || 3306,
 
       logging: dbConfig.logging
     }

@@ -3,14 +3,19 @@
   "version": "1.0.0",
   "description": "A finite-cycle CLI worker manager with row locking",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AliRwxza/express-job-processor.git"
+  },
   "files": [
     "workers/",
     "models/",
     "jobs/",
     "registry/",
     "config/",
-    "index.js",
     "bin/",
+    "migrations/",
+    "index.js",
     "README.md"
   ],
   "bin": {

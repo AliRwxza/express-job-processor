@@ -1,5 +1,5 @@
 {
-  "name": "express-job-processor",
+  "name": "node-dispatch",
   "version": "1.0.0",
   "description": "A finite-cycle CLI worker manager with row locking",
   "main": "index.js",
@@ -14,10 +14,7 @@
     "README.md"
   ],
   "bin": {
-    "job-processor": "./bin/job-processor.js"
-  },
-  "scripts": {
-    "cli": "node ./bin/job-processor.js"
+    "node-dispatch": "./bin/job-processor.js"
   },
   "keywords": [
     "worker",

@@ -100,26 +100,37 @@ async function handleJobFailure(workerReference, result) {
 async function claimJobs(workerCount) {
   const transaction = await sequelize.transaction();
 
-  const jobs = await Job.findAll({
-    where: { status: "queued" },
-    order: [
-      ["attempts", "ASC"],
-      ["createdAt", "ASC"]
-    ],
-    limit: workerCount,
-    transaction,
-    lock: transaction.LOCK.UPDATE,
-    skipLocked: true
-  });
+  let jobs;
 
-  for (const job of jobs) {
-    await job.update(
-      { "status": "processing" },
-      { transaction }
-    );
+  try {
+    jobs = await Job.findAll({
+      where: { status: "queued" },
+      order: [
+        ["attempts", "ASC"],
+        ["createdAt", "ASC"]
+      ],
+      limit: workerCount,
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true
+    });
+
+    for (const job of jobs) {
+      await job.update(
+        { "status": "processing" },
+        { transaction }
+      );
+    }
+
+    await transaction.commit();
+    
+  } catch (err) {
+    jobs = null;
+    
+    await transaction.rollback();
+    
+    console.error(err);
   }
-
-  transaction.commit();
   
   return jobs;
 }
@@ -128,10 +139,10 @@ async function assignJobToWorker(workerReference, job) {
   if (!jobRegistry.validateRuntimeKey(job.type)) {
     await job.update({
       status: "failed",
-      result: "ERROR: Invalid job"
+      result: `Invalid job type ${job.type}`
     });
 
-    throw new Error(`Invalid job type ${job.type}`);
+    return;
   }
 
   const jobPath = jobRegistry.get(job.type);

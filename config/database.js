@@ -24,6 +24,13 @@ function init() {
   );
 
   sequelize.authenticate()
+    .then(() => {
+      console.log("connected to database");
+    })
+    .catch((err) => {
+      console.error("This is an error");
+      throw err;
+    });
 
   require("../models");
   

@@ -3,16 +3,6 @@
 const { parseArgs } = require("node:util");
 const path = require("node:path");
 
-const args = [
-  "db-host",
-  "db-port",
-  "db-name",
-  "db-user",
-  "db-password",
-  "workers",
-  "jobs-directory",
-];
-
 function printHelp() {
   console.log(`
     Usage:

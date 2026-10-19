@@ -18,7 +18,29 @@ async function start() {
 
   if (config.driver === "database") {
     const { init } = require("./config/database");
-    await init();
+    try {
+      const sequelize = await init();
+      await sequelize.authenticate();
+    
+    } catch(err) {
+      throw new Error("This is another error")
+    }
+
+    // await sequelize.authenticate();
+
+    // const sleeper = 5000;
+    // await sleep(sleeper)
+    // .then(() => {
+    //   console.log(`Attempting authentication after ${sleeper / 1000} seconds...`);
+    //   return sequelize.authenticate();
+    // })
+    // .then(() => {
+    //   console.log("connected to database");
+    // })
+    // .catch((err) => {
+    //   console.error("Authentication failed:", err);
+    //   throw err;
+    // });
 
   } else if (config.driver === "file") {
     throw new Error("Not implemented yet");

@@ -92,7 +92,6 @@ async function main() {
   const configPath = path.resolve(process.cwd(), values.config ?? "queue.config.js");
 
   if (command === "setup") {
-    console.log("WE'RE HERE");
     await createTemplate(configPath);
     return;
   }

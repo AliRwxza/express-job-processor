@@ -1,5 +1,6 @@
 const Job = require("./job");
 const JobLog = require("./jobLog");
+const FailedJob = require("./failedJob");
 
 Job.hasMany(JobLog,
   { foreignKey: "jobId" }
@@ -11,5 +12,6 @@ JobLog.belongsTo(Job,
 
 module.exports = {
   Job,
-  JobLog
+  JobLog,
+  FailedJob
 };

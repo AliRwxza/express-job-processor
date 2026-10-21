@@ -18,10 +18,10 @@ From your application's root directory:
 
 ```bash
 npm install node-dispatch dotenv
-npx node-dispatch setup
+npx node-dispatch setup --config ./config/config.js
 ```
 
-This creates `queue.config.js` without overwriting an existing file. In the current release, `setup` only creates the configuration template; run migrations separately as shown below.
+This creates the requested configuration file without overwriting an existing file, then runs all pending package migrations. Configure the database values first if the file was just created, then rerun the same command.
 
 Update the configuration for your application:
 
@@ -33,6 +33,7 @@ module.exports = {
   driver: "database",
   workersCount: 3,
   jobsDirectory: "./jobs",
+  removeOnComplete: false,
   database: {
     dialect: "mysql",
     host: process.env.DB_HOST || "localhost",
@@ -61,7 +62,7 @@ Keep real credentials out of Git. `dotenv` is optional if your environment alrea
 
 ### 2. Prepare the database
 
-Create a MySQL database and a user with access to it, then apply the package's migrations:
+Create a MySQL database and a user with access to it. `node-dispatch setup --config ./config/config.js` applies the package's migrations using that configuration. To run them manually instead:
 
 ```bash
 npx sequelize-cli db:migrate --url "mysql://USER:PASSWORD@HOST:3306/job_processor" --migrations-path ./node_modules/node-dispatch/migrations
@@ -118,6 +119,15 @@ main().catch(console.error);
 
 `dispatch()` saves the job and returns its database record. It does not wait for execution. In a web application, use the same configuration at startup and dispatch jobs from your request handlers.
 
+To enqueue several instances of the same job, pass their payloads to `dispatchMany()`. It performs one bulk insert and returns the created records:
+
+```js
+const jobs = await AddNumbers.dispatchMany([
+  { a: 10, b: 20 },
+  { a: 30, b: 40 },
+]);
+```
+
 ### 5. Start workers
 
 In a separate terminal, from the same application root:
@@ -127,6 +137,8 @@ npx node-dispatch start
 ```
 
 Workers continue polling for jobs while the command is running. Completed jobs store their result in the database.
+
+Set `removeOnComplete: true` to remove completed queue rows. Jobs that exhaust their retries are then moved to the `failed_jobs` archive with status `failed` and their worker error output in `result`.
 
 To use a different configuration file:
 

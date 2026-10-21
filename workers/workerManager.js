@@ -1,4 +1,4 @@
-const { Job } = require('../models');
+const { Job, FailedJob } = require('../models');
 const { setTimeout, clearTimeout } = require("node:timers");
 const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
@@ -94,15 +94,58 @@ async function handleJobFailure(workerReference, result) {
   const canRetry = job.attempts < job.maxRetries;
 
   try {
-    await job.update({
-      status: canRetry ? "queued" : "failed",
-      attempts: canRetry ? job.attempts + 1 : job.attempts,
-      result: result
-      }
-    );
+    if (canRetry) {
+      await job.update({
+        status: "queued",
+        attempts: job.attempts + 1,
+        result
+      });
+      return;
+    }
+
+    if (store.get("removeOnComplete") === true) {
+      await archiveFailedJob(job, result);
+      return;
+    }
+
+    await job.update({ status: "failed", result });
     
   } catch (err) {
     console.error(`[WORKER ${workerReference.id}] Could not update failed job:`, err);
+  }
+}
+
+async function archiveFailedJob(job, result) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    await FailedJob.create({
+      originalJobId: job.id,
+      type: job.type,
+      payload: job.payload,
+      status: "failed",
+      attempts: job.attempts,
+      maxRetries: job.maxRetries,
+      timeout: job.timeout,
+      result,
+      failedAt: new Date()
+    }, { transaction });
+
+    // Keep the archive and queue mutation inseparable so a failure cannot be
+    // silently lost or recorded twice.
+    const deleted = await Job.destroy({
+      where: { id: job.id, status: "processing" },
+      transaction
+    });
+
+    if (deleted !== 1) {
+      throw new Error(`Could not remove failed job ${job.id} from the queue`);
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
   }
 }
 
@@ -146,10 +189,8 @@ async function claimJobs(workerCount) {
 
 async function assignJobToWorker(workerReference, job) {
   if (!jobRegistry.validateRuntimeKey(job.type)) {
-    await job.update({
-      status: "failed",
-      result: `Invalid job type ${job.type}`
-    });
+    workerReference.job = job;
+    await handleJobFailure(workerReference, `Invalid job type ${job.type}`);
 
     return;
   }

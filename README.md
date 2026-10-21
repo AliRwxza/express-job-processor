@@ -128,6 +128,13 @@ const jobs = await AddNumbers.dispatchMany([
 ]);
 ```
 
+When every instance should receive the same payload, pass that payload and the
+number of instances instead:
+
+```js
+const jobs = await ProcessBatchData.dispatchMany({ failure: true }, 3);
+```
+
 ### 5. Start workers
 
 In a separate terminal, from the same application root:

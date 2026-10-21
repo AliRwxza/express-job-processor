@@ -35,14 +35,30 @@ class BaseJob {
   }
 
   /**
-   * Queue multiple payloads in one database operation.
+   * Queue multiple jobs in one database operation.
    *
-   * @param {object[]} payloads JSON-serializable payloads for this job type.
+   * Pass an array to queue jobs with individual payloads, or pass one payload
+   * together with a count to queue that same payload repeatedly.
+   *
+   * @param {object[]|object} payloadsOrPayload JSON-serializable payload(s) for this job type.
+   * @param {number} [count] Number of copies to queue when passing a single payload.
    * @returns {Promise<object[]>} The created job records.
    */
-  static async dispatchMany(payloads) {
-    if (!Array.isArray(payloads)) {
-      throw new TypeError("dispatchMany() expects an array of payloads");
+  static async dispatchMany(payloadsOrPayload, count) {
+    let payloads;
+
+    if (Array.isArray(payloadsOrPayload)) {
+      if (count !== undefined) {
+        throw new TypeError("dispatchMany() does not accept a count when passed an array of payloads");
+      }
+
+      payloads = payloadsOrPayload;
+    } else {
+      if (!Number.isSafeInteger(count) || count < 0) {
+        throw new TypeError("dispatchMany() expects a non-negative integer count when passed a single payload");
+      }
+
+      payloads = Array.from({ length: count }, () => payloadsOrPayload);
     }
 
     if (Number.isNaN(this.timeout) || !Number.isInteger(this.timeout) || this.timeout < 0) {

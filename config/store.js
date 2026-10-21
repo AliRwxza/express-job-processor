@@ -5,6 +5,7 @@ class Configuration {
     this.options = {
       workersCount: 1,
       jobsDirectory: "./jobs",
+      removeOnComplete: false,
       driver: "database",
       database: {
         name: null,

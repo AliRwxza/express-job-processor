@@ -2,6 +2,7 @@ const { Job } = require('../models');
 const { setTimeout, clearTimeout } = require("node:timers");
 const { setTimeout: sleep } = require("node:timers/promises");
 const { fork } = require("node:child_process");
+const store = require("../config/store");
 const path = require("path");
 
 const { init } = require("../config/database");
@@ -32,19 +33,29 @@ function createWorker(workerId) {
 
     if (type === "completed") {
       clearTimeout(workerReference.timeout);
-      
-      workerReference.job = null;
+      workerReference.timeout = null;
 
       try {
-        await Job.update({
-          status: "completed",
-          result: result
-        }, {
-          where: { id: job.id, status: "processing" }
-        });
+        const where = {
+          id: job.id,
+          status: "processing"
+        };
+
+        if (store.get("removeOnComplete") === true) {
+          await Job.destroy({ where });
+
+        } else {
+          await Job.update(
+            { status: "completed", result },
+            { where }
+          );
+        }
+
       } catch (err) {
-        console.error(`[WORKER ${workerReference.id}] Could not complete its job with results: ${err}`);
+        console.error(`[WORKER ${workerReference.id}] Could not complete its job: ${err}`);
       }
+
+      workerReference.job = null;
 
     } else if (type === "failed") {
       await handleJobFailure(workerReference, result);
@@ -83,12 +94,10 @@ async function handleJobFailure(workerReference, result) {
   const canRetry = job.attempts < job.maxRetries;
 
   try {
-    await Job.update({
+    await job.update({
       status: canRetry ? "queued" : "failed",
       attempts: canRetry ? job.attempts + 1 : job.attempts,
       result: result
-      }, {
-        where: { id: job.id }
       }
     );
     
@@ -125,7 +134,7 @@ async function claimJobs(workerCount) {
     await transaction.commit();
     
   } catch (err) {
-    jobs = null;
+    jobs = [];
     
     await transaction.rollback();
     
@@ -154,8 +163,10 @@ async function assignJobToWorker(workerReference, job) {
       job: job,
       path: jobPath
     });
+  
   } catch(err) {
     await handleJobFailure(workerReference, err.message);
+    return;
   }
 
   workerReference.timeout = setTimeout(async () => {
@@ -180,7 +191,14 @@ async function runCycle() {
   }
 
   for (let i = 0; i < claimedJobs.length; i++) {
-    assignJobToWorker(idleWorkers[i], claimedJobs[i]);
+    try {
+      await assignJobToWorker(idleWorkers[i], claimedJobs[i]);
+    } catch(err) {
+      await Job.update(
+        { status: "queued" },
+        { id: claimedJobs[i].id }
+      )
+    }
   }
 }
 
@@ -212,16 +230,20 @@ async function startWorkers(workerCount) {
 
 async function stopWorkers() {
   isRunning = false;
-  
+
   for (const workerRef of workers) {
     workerRef.sto = true;
-
-    while (workerRef.job);
+  }
+  
+  for (const workerRef of workers) {
+    while (workerRef.job) {
+      await sleep(100);
+    }
 
     clearTimeout(workerRef.timeout);
 
-    workerRef.process.job = null;
-    workerRef.process.timeout = null;
+    workerRef.job = null;
+    workerRef.timeout = null;
   }
 }
 

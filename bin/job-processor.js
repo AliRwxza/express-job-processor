@@ -3,6 +3,8 @@
 const { parseArgs } = require("node:util");
 const path = require("node:path");
 const fs = require("fs/promises");
+const { Sequelize } = require("sequelize");
+const Umzug = require("umzug");
 
 const template = 
 `require("dotenv").config();
@@ -11,6 +13,7 @@ module.exports = {
   driver: "database",
   workersCount: 1,
   jobsDirectory: "./jobs",
+  removeOnComplete: false,
 
   database: {
     dialect: "mysql",
@@ -37,6 +40,46 @@ async function createTemplate(configPath = "../config/config.queue.js") {
     }
 
     console.log("Config file already exists");
+  }
+}
+
+async function runMigrations(configPath) {
+  const config = require(configPath);
+
+  if (!config || typeof config !== "object" || !config.database) {
+    throw new Error("Configuration must export an object with a database section");
+  }
+
+  const database = config.database;
+  if (!database.name || !database.user) {
+    throw new Error("Database name and user must be configured before running migrations");
+  }
+
+  const sequelize = new Sequelize(database.name, database.user, database.password, {
+    host: database.host || "localhost",
+    port: database.port || 3306,
+    dialect: database.dialect || "mysql",
+    logging: database.logging || false
+  });
+
+  try {
+    await sequelize.authenticate();
+
+    const migrator = new Umzug({
+      storage: "sequelize",
+      storageOptions: { sequelize },
+      logging: (message) => console.log(message),
+      migrations: {
+        path: path.resolve(__dirname, "../migrations"),
+        pattern: /^(?!.*\.d\.ts$).*\.(cjs|js|cts|ts)$/,
+        params: [sequelize.getQueryInterface(), Sequelize]
+      }
+    });
+
+    await migrator.up();
+    console.log("Database migrations are up to date");
+  } finally {
+    await sequelize.close();
   }
 }
 
@@ -93,6 +136,7 @@ async function main() {
 
   if (command === "setup") {
     await createTemplate(configPath);
+    await runMigrations(configPath);
     return;
   }
 
